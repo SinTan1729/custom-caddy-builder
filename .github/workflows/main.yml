@@ -10,7 +10,7 @@ on:
     - cron: "58 15 3 * *"
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ caddy-custom }}
+  IMAGE_NAME: caddy-custom
 
 jobs:
   build-and-push-image:
