@@ -49,6 +49,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDKIT_MULTI_PLATFORM=1
           annotations: ${{ steps.meta.outputs.annotations }}
 
       - name: Generate artifact attestation
