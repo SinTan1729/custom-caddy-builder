@@ -7,7 +7,7 @@ The container is [available on GHCR](https://ghcr.io/sintan1729/caddy-custom).
 
 It's built monthly, and whenever a new version of caddy is released.
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/sintan1729/custom-caddy-builder/main.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/sintan1729/custom-caddy-builder/update-and-release.yml)
 
 ## Modules
 
