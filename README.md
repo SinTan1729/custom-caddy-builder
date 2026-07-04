@@ -13,5 +13,4 @@ It's built monthly, and whenever a new version of caddy is released.
 
 - [github.com/caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare)
 - [pkg.jsn.cam/caddy-defender](https://pkg.jsn.cam/caddy-defender)
-- [github.com/muety/caddy-remote-host](https://github.com/muety/caddy-remote-host)
 - [github.com/mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
