@@ -1,0 +1,83 @@
+name: Update Dockerfile and publish image
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "58 15 3 * *"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  update-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Dockerfile update script
+        run: ./github/updater.py
+
+      - name: Check whether Dockerfile changed
+        id: dockerfile_changes
+        shell: bash
+        run: |
+          if git diff --quiet -- Dockerfile; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit Dockerfile changes
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          BODY_FILE="update-summary.txt"
+
+          git add Dockerfile
+
+          git commit \
+            -m "Found updates" \
+            -m "$(cat "$BODY_FILE")"
+
+      - name: Push commit
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        run: git push
+
+      - name: Log in to GHCR
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/caddy-custom
+          tags: |
+            type=raw,value=latest
+
+      - name: Build and push latest image
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
