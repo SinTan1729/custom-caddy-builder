@@ -5,9 +5,9 @@ use, but feel free to use the image if it fits your needs.
 
 The container is [available on GHCR](https://ghcr.io/sintan1729/caddy-custom).
 
-It's built monthly, and whenever a new version of caddy is released.
+A workflow checks updates for `caddy` and the plugins daily, and builds new docker images whenever necessary.
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/sintan1729/custom-caddy-builder/update-and-release.yml)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/sintan1729/custom-caddy-builder/update-and-release.yml)](https://github.com/SinTan1729/custom-caddy-builder/actions/workflows/update-and-release.yml)
 
 ## Modules
 
