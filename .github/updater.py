@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+from subprocess import run
 
 DOCKERFILE = Path(sys.argv[1] if len(sys.argv) > 1 else "Dockerfile")
 SUMMARY_FILE = Path("./update-summary.txt")
@@ -55,14 +56,6 @@ def parse_semver(tag: str) -> Version | None:
     return (major, minor, patch)
 
 
-def repo_for_module(module: str) -> str:
-    if module in REPO_MAP:
-        return REPO_MAP[module]
-    if module.startswith("github.com/"):
-        return module.removeprefix("github.com/")
-    raise RuntimeError(f"No repo mapping for module: {module}")
-
-
 # ---------- Caddy from Docker Hub ----------
 
 
@@ -94,72 +87,22 @@ def latest_caddy_docker_tag() -> str:
 # ---------- Plugins from GitHub ----------
 
 
-def latest_github_release_tag(repo: str) -> str | None:
-    """
-    Return latest stable semver GitHub release tag, or None if none exist.
-    """
-    encoded_repo = urllib.parse.quote(repo, safe="/")
-    url = f"https://api.github.com/repos/{encoded_repo}/releases?per_page=100"
-    releases = github_json(url)
-
-    if not isinstance(releases, list):
-        raise RuntimeError(f"Unexpected GitHub releases response for {repo}: {releases!r}")
-
-    candidates: list[tuple[Version, str]] = []
-
-    for rel in releases:
-        if rel.get("draft") or rel.get("prerelease"):
-            continue
-        tag = rel.get("tag_name", "")
-        version = parse_semver(tag)
-        if version is None:
-            continue
-        candidates.append((version, tag))
-
-    if not candidates:
-        return None
-
-    candidates.sort(reverse=True)
-    return candidates[0][1]
-
-
-def latest_github_tag(repo: str) -> str:
-    """
-    Return latest stable semver tag from GitHub tags API.
-    Keeps the original tag text, including a leading 'v' if present.
-    """
-    encoded_repo = urllib.parse.quote(repo, safe="/")
-    url = f"https://api.github.com/repos/{encoded_repo}/tags?per_page=100"
-    tags = github_json(url)
-
-    if not isinstance(tags, list):
-        raise RuntimeError(f"Unexpected GitHub tags response for {repo}: {tags!r}")
-
-    candidates: list[tuple[Version, str]] = []
-
-    for tag_obj in tags:
-        tag = tag_obj.get("name", "")
-        version = parse_semver(tag)
-        if version is None:
-            continue
-        candidates.append((version, tag))
-
-    if not candidates:
-        raise RuntimeError(f"No stable semver GitHub tags found for {repo}")
-
-    candidates.sort(reverse=True)
-    return candidates[0][1]
-
-
 def latest_plugin_version(repo: str) -> str:
     """
     Prefer latest stable release tag. If there are no stable releases,
     fall back to the latest stable git tag.
     """
-    release_tag = latest_github_release_tag(repo)
-    if release_tag is not None:
-        return release_tag
-    return latest_github_tag(repo)
+    if repo == "pkg.jsn.cam/caddy-defender":
+        repo = "github.com/JasonLovesDoggo/caddy-defender"
+    if not repo.startswith("https://"):
+        repo = f"https://{repo}"
+    result = run(
+        ["git", "ls-remote", "--tags", "--refs", "--sort=v:refname", repo],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return str((result.splitlines()[-1])).rsplit("/", 1)[1]
 
 
 # ---------- Dockerfile parsing ----------
@@ -247,8 +190,7 @@ def main() -> int:
     latest_plugins: dict[str, str] = {}
     for module, current_version in current_plugins.items():
         print(f"Current {module}: {current_version}")
-        repo = repo_for_module(module)
-        latest_version = latest_plugin_version(repo)
+        latest_version = latest_plugin_version(module)
         latest_plugins[module] = latest_version
         print(f"Latest {module}: {latest_version}")
 
