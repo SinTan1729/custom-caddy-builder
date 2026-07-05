@@ -22,11 +22,6 @@ SUMMARY_FILE = Path("./update-summary.txt")
 if not DOCKERFILE.exists():
     raise SystemExit(f"Dockerfile not found: {DOCKERFILE}")
 
-# Map non-GitHub module paths to the GitHub repo whose releases/tags should be checked.
-REPO_MAP = {
-    "pkg.jsn.cam/caddy-defender": "JasonLovesDoggo/caddy-defender",
-}
-
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 Version = tuple[int, int, int]
 
@@ -57,14 +52,7 @@ def parse_semver(tag: str) -> Version | None:
     return (major, minor, patch)
 
 
-# ---------- Caddy from Docker Hub ----------
-
-
 def latest_caddy_docker_tag() -> str:
-    """
-    Return latest stable semver tag from Docker Hub's caddy repository.
-    Output has no leading 'v', e.g. '2.11.4'.
-    """
     url = "https://hub.docker.com/v2/repositories/library/caddy/tags?page_size=100"
     candidates: list[Version] = []
 
@@ -83,9 +71,6 @@ def latest_caddy_docker_tag() -> str:
     candidates.sort(reverse=True)
     latest = candidates[0]
     return f"{latest[0]}.{latest[1]}.{latest[2]}"
-
-
-# ---------- Plugins from GitHub ----------
 
 
 def latest_plugin_version(repo: str) -> str:
@@ -171,10 +156,10 @@ def main() -> int:
     current_plugins = current_plugin_versions(text)
 
     print("Checking versions...")
-    print(f"Current caddy: {current_caddy}")
+    print(f"Current caddy: v{current_caddy}")
 
     latest_caddy = latest_caddy_docker_tag()
-    print(f"Latest caddy: {latest_caddy}")
+    print(f"Latest caddy: v{latest_caddy}")
 
     latest_plugins: dict[str, str] = {}
     for module, current_version in current_plugins.items():
