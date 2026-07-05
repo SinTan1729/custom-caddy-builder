@@ -5,6 +5,8 @@
 
 # Update versions of caddy-builder and plugins
 
+import time
+import requests
 import json
 import os
 import re
@@ -13,7 +15,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
-from subprocess import run
 
 DOCKERFILE = Path(sys.argv[1] if len(sys.argv) > 1 else "Dockerfile")
 SUMMARY_FILE = Path("./update-summary.txt")
@@ -88,21 +89,9 @@ def latest_caddy_docker_tag() -> str:
 
 
 def latest_plugin_version(repo: str) -> str:
-    """
-    Prefer latest stable release tag. If there are no stable releases,
-    fall back to the latest stable git tag.
-    """
-    if repo == "pkg.jsn.cam/caddy-defender":
-        repo = "github.com/JasonLovesDoggo/caddy-defender"
-    if not repo.startswith("https://"):
-        repo = f"https://{repo}"
-    result = run(
-        ["git", "ls-remote", "--tags", "--refs", "--sort=v:refname", repo],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    return str((result.splitlines()[-1])).rsplit("/", 1)[1]
+    req = requests.get(f"https://pkg.go.dev/v1beta/versions/{repo}", timeout=3)
+    req.raise_for_status()
+    return req.json()["items"][0]["latestVersion"]
 
 
 # ---------- Dockerfile parsing ----------
@@ -193,6 +182,7 @@ def main() -> int:
         latest_version = latest_plugin_version(module)
         latest_plugins[module] = latest_version
         print(f"Latest {module}: {latest_version}")
+        time.sleep(1)
 
     new_text = update_text(text, latest_caddy, latest_plugins)
 
