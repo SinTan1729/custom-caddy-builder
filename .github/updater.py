@@ -83,7 +83,7 @@ def latest_plugin_version(repo: str) -> str:
 
 
 def current_caddy_version(text: str) -> str:
-    m = re.search(r"(?m)^FROM caddy:([0-9]+\.[0-9]+\.[0-9]+)-builder AS builder$", text)
+    m = re.search(r"(?m)^FROM caddy:([0-9]+\.[0-9]+\.[0-9]+)-builder-alpine AS builder$", text)
     if not m:
         raise RuntimeError("Could not find builder Caddy version in Dockerfile")
     return m.group(1)
@@ -107,15 +107,15 @@ def current_plugin_versions(text: str) -> dict[str, str]:
 def update_text(text: str, caddy_version: str, module_updates: dict[str, str]) -> str:
     # Update builder image
     text = re.sub(
-        r"(?m)^FROM caddy:[0-9]+\.[0-9]+\.[0-9]+-builder AS builder$",
-        f"FROM caddy:{caddy_version}-builder AS builder",
+        r"(?m)^FROM caddy:[0-9]+\.[0-9]+\.[0-9]+-builder-alpine AS builder$",
+        f"FROM caddy:{caddy_version}-builder-alpine AS builder",
         text,
     )
 
     # Update runtime image
     text = re.sub(
-        r"(?m)^FROM caddy:[0-9]+\.[0-9]+\.[0-9]+$",
-        f"FROM caddy:{caddy_version}",
+        r"(?m)^FROM caddy:[0-9]+\.[0-9]+\.[0-9]+-alpine$",
+        f"FROM caddy:{caddy_version}-alpine",
         text,
     )
 
