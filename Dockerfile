@@ -4,7 +4,6 @@ RUN xcaddy build \
    --with github.com/caddy-dns/cloudflare@v0.2.4 \
    --with pkg.jsn.cam/caddy-defender@v0.10.1 \
    --with github.com/mholt/caddy-ratelimit@v0.1.0 \
-   --with github.com/mholt/caddy-l4@v0.1.1
 
 FROM caddy:2.11.4-alpine
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
