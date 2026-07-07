@@ -14,3 +14,4 @@ A workflow checks updates for `caddy` and the plugins daily, and builds new dock
 - [github.com/caddy-dns/cloudflare](https://pkg.go.dev/github.com/caddy-dns/cloudflare)
 - [pkg.jsn.cam/caddy-defender](https://pkg.go.dev/pkg.jsn.cam/caddy-defender)
 - [github.com/mholt/caddy-ratelimit](https://pkg.go.dev/github.com/mholt/caddy-ratelimit)
+- [github.com/mholt/caddy-l4](https://pkg.go.dev/github.com/mholt/caddy-l4)
