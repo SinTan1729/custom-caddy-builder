@@ -9,6 +9,8 @@ jobs:
   update-and-publish:
     name: Update and Publish
     runs-on: ubuntu-latest
+    outputs:
+      dockerfile_changed: ${{ steps.dockerfile_changes.outputs.changed }}
 
     permissions:
       contents: write
@@ -89,6 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Smoke test
     needs: update-and-publish
+    if: needs.update-and-publish.outputs.dockerfile_changed == 'true'
 
     steps:
       - name: Log in to GHCR
