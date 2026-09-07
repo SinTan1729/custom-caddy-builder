@@ -5,16 +5,17 @@
 
 # Update versions of caddy-builder and plugins
 
-import time
-import requests
 import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+import requests
 
 DOCKERFILE = Path(sys.argv[1] if len(sys.argv) > 1 else "Dockerfile")
 SUMMARY_FILE = Path("./update-summary.txt")
