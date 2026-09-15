@@ -133,6 +133,15 @@ def update_text(text: str, caddy_version: str, module_updates: dict[str, str]) -
         text,
     )
 
+    # Update caddy-defender clone version
+    caddy_defender_latest_version = module_updates.get("caddy-defender")
+    if caddy_defender_latest_version != None:
+        text = re.sub(
+            r"github.com/JSONLovesDoggo/caddy-defender --branch v[0-9]+\.[0-9]+\.[0-9]+",
+            f"github.com/JSONLovesDoggo/caddy-defender --branch {caddy_defender_latest_version}",
+            text,
+        )
+
     return text
 
 
