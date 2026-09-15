@@ -1,11 +1,12 @@
 FROM caddy:2.11.4-builder-alpine AS builder
 
+# Enable tor ranges in caddy-defender
 WORKDIR /app
 RUN git clone https://github.com/JasonLovesDoggo/caddy-defender --branch v0.10.1
-
 WORKDIR /app/caddy-defender
 RUN go run ranges/main.go --fetch-tor
 
+# Build caddy using xcaddy
 WORKDIR /usr/bin
 RUN xcaddy build \
    --with github.com/caddy-dns/cloudflare@v0.2.4 \
