@@ -95,7 +95,9 @@ def current_plugin_versions(text: str) -> dict[str, str]:
     Parse:
       --with module@version
     """
-    pairs = re.findall(r"--with\s+([^\s@\\]+)@([^\s\\]+)", text)
+    pairs = re.findall(
+        r"--with\s+([a-z.\-\/]+)@(v[0-9]+\.[0-9]+\.[0-9]+)(?:=\/app\/caddy-defender)?", text
+    )
     if not pairs:
         raise RuntimeError(f"No versioned xcaddy plugins found in {DOCKERFILE}")
     # preserve first occurrence if repeated
@@ -125,7 +127,10 @@ def update_text(text: str, caddy_version: str, module_updates: dict[str, str]) -
         module = match.group(1)
         oldver = match.group(2)
         newver = module_updates.get(module, oldver)
-        return f"--with {module}@{newver}"
+        if module == "caddy-defender":
+            return f"--with {module}@{newver}=/app/caddy-defender"
+        else:
+            return f"--with {module}@{newver}"
 
     text = re.sub(
         r"--with\s+([^\s@\\]+)@([^\s\\]+)",
