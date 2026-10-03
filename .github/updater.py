@@ -127,7 +127,7 @@ def update_text(text: str, caddy_version: str, module_updates: dict[str, str]) -
         module = match.group(1)
         oldver = match.group(2)
         newver = module_updates.get(module, oldver)
-        if module == "caddy-defender":
+        if module == "pkg.jsn.cam/caddy-defender":
             return f"--with {module}@{newver}=/app/caddy-defender"
         else:
             return f"--with {module}@{newver}"

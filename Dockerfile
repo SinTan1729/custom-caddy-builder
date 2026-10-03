@@ -10,7 +10,7 @@ RUN go run ranges/main.go --fetch-tor
 WORKDIR /usr/bin
 RUN xcaddy build \
    --with github.com/caddy-dns/cloudflare@v0.2.4 \
-   --with pkg.jsn.cam/caddy-defender@v0.10.1 \
+   --with pkg.jsn.cam/caddy-defender@v0.10.1=/app/caddy-defender \
    --with github.com/mholt/caddy-ratelimit@v0.1.0 \
    --with github.com/caddy-dns/desec@v1.1.0
 
