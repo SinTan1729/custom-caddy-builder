@@ -2,7 +2,7 @@ FROM caddy:2.11.7-builder-alpine AS builder
 
 # Enable tor ranges in caddy-defender
 WORKDIR /app
-RUN git clone https://github.com/JasonLovesDoggo/caddy-defender --branch v0.10.1
+RUN git clone https://github.com/JasonLovesDoggo/caddy-defender --branch v0.10.2
 WORKDIR /app/caddy-defender
 RUN go run ranges/main.go --fetch-tor
 
@@ -10,7 +10,7 @@ RUN go run ranges/main.go --fetch-tor
 WORKDIR /usr/bin
 RUN xcaddy build \
    --with github.com/caddy-dns/cloudflare@v0.2.4 \
-   --with pkg.jsn.cam/caddy-defender@v0.10.1=/app/caddy-defender \
+   --with pkg.jsn.cam/caddy-defender@v0.10.2=/app/caddy-defender \
    --with github.com/mholt/caddy-ratelimit@v0.1.0 \
    --with github.com/caddy-dns/desec@v1.1.0 \
    --with github.com/SinTan1729/caddy-wikijs-metatags@v0.4.2
