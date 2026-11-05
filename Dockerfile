@@ -1,4 +1,4 @@
-FROM caddy:2.11.7-builder-alpine AS builder
+FROM caddy:2.11.8-builder-alpine AS builder
 
 # Enable tor ranges in caddy-defender
 WORKDIR /app
@@ -16,5 +16,5 @@ RUN xcaddy build \
    --with github.com/SinTan1729/caddy-wikijs-metatags@v0.4.2
 
 # The actual shipped container
-FROM caddy:2.11.7-alpine
+FROM caddy:2.11.8-alpine
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
