@@ -13,7 +13,7 @@ RUN xcaddy build \
    --with pkg.jsn.cam/caddy-defender@v0.10.2=/app/caddy-defender \
    --with github.com/mholt/caddy-ratelimit@v0.1.0 \
    --with github.com/caddy-dns/desec@v1.1.0 \
-   --with github.com/SinTan1729/caddy-wikijs-metatags@v0.4.2
+   --with github.com/SinTan1729/caddy-wikijs-metatags@v0.4.3
 
 # The actual shipped container
 FROM caddy:2.11.9-alpine
