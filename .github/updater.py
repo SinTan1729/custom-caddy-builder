@@ -96,7 +96,7 @@ def current_plugin_versions(text: str) -> dict[str, str]:
       --with module@version
     """
     pairs = re.findall(
-        r"--with\s+([a-z.\-\/]+)@(v[0-9]+\.[0-9]+\.[0-9]+)(?:=\/app\/caddy-defender)?", text
+        r"--with\s+([A-Za-z0-9.\-\/]+)@(v[0-9]+\.[0-9]+\.[0-9]+)(?:=\/app\/caddy-defender)?", text
     )
     if not pairs:
         raise RuntimeError(f"No versioned xcaddy plugins found in {DOCKERFILE}")
