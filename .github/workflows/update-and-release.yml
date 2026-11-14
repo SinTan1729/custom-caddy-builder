@@ -3,7 +3,7 @@ name: Update Dockerfile and publish image
 on:
   workflow_dispatch:
   schedule:
-    - cron: "53 3 * * *"
+    - cron: '53 3 * * *'
 
 jobs:
   update-and-publish:
@@ -19,19 +19,17 @@ jobs:
       id-token: write
 
     steps:
+      # Run updates
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
       - name: Set up Git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
       - name: Run Dockerfile update script
         run: ./.github/updater.py
-
       - name: Check whether Dockerfile changed
         id: dockerfile_changes
         shell: bash
@@ -42,36 +40,48 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit Dockerfile changes
+      # Build and test docker image
+      - name: Build latest image for testing
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: caddy-custom:test
+      - name: Run a smoke test
         if: steps.dockerfile_changes.outputs.changed == 'true'
         shell: bash
         run: |
-          BODY_FILE="update-summary.txt"
+          mkdir -p smoke
+          cat > smoke/Caddyfile <<'EOF'
+          :80 {
+            respond "ok" 200
+          }
+          EOF
+          docker run -d --rm \
+            --name caddy-smoke \
+            -p 8080:80 \
+            -v "$PWD/smoke/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy-custom:test
+          for i in {1..10}; do
+          if curl --fail --silent http://localhost:8080 | grep -Fxq "ok"; then
+            exit 0
+          fi
+            sleep 1
+          done
+          docker logs caddy-smoke
+          curl --fail --silent http://localhost:8080 | grep -Fx "ok"
 
-          git add Dockerfile
-
-          git commit \
-            -m "Found updates" \
-            -m "$(cat "$BODY_FILE")"
-
-      - name: Push commit
-        if: steps.dockerfile_changes.outputs.changed == 'true'
-        run: git push
-
+      # Commit and push the docker image
       - name: Log in to GHCR
-        if: |
-          steps.dockerfile_changes.outputs.changed == 'true' ||
-          github.event_name == 'workflow_dispatch'
+        if: steps.dockerfile_changes.outputs.changed == 'true'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Extract image metadata
-        if: |
-          steps.dockerfile_changes.outputs.changed == 'true' ||
-          github.event_name == 'workflow_dispatch'
+        if: steps.dockerfile_changes.outputs.changed == 'true'
         id: meta
         uses: docker/metadata-action@v6
         env:
@@ -80,11 +90,8 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/caddy-custom
           tags: |
             type=raw,value=latest
-
-      - name: Build and push latest image
-        if: |
-          steps.dockerfile_changes.outputs.changed == 'true' ||
-          github.event_name == 'workflow_dispatch'
+      - name: Push the image to GHCR
+        if: steps.dockerfile_changes.outputs.changed == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -92,51 +99,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
-
-  smoke-test:
-    runs-on: ubuntu-latest
-    name: Smoke test
-    needs: update-and-publish
-    if: |
-      needs.update-and-publish.outputs.dockerfile_changed == 'true' ||
-      github.event_name == 'workflow_dispatch'
-
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set lowercase image owner
-        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - name: Pull image to test
-        run: docker pull ghcr.io/${{ env.IMAGE_OWNER }}/caddy-custom:latest
-
-      - name: Create default smoke-test Caddyfile
+      - name: Commit Dockerfile changes
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        shell: bash
         run: |
-          mkdir -p smoke
-          cat > smoke/Caddyfile <<'EOF'
-          :80 {
-            respond "ok" 200
-          }
-          EOF
-
-      - name: Start container with smoke-test config
-        run: |
-          docker run -d --rm \
-            --name caddy-smoke \
-            -p 8080:80 \
-            -v "$PWD/smoke/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            ghcr.io/${{ env.IMAGE_OWNER }}/caddy-custom:latest
-
-      - name: Wait for Caddy to start
-        run: sleep 5
-
-      - name: Show container logs
-        run: docker logs caddy-smoke
-
-      - name: Smoke test HTTP response
-        run: |
-          curl --fail --silent http://localhost:8080 | grep -Fx "ok"
+          BODY_FILE="update-summary.txt"
+          git add Dockerfile
+          git commit \
+            -m "Found updates" \
+            -m "$(cat "$BODY_FILE")"
+      - name: Push commit
+        if: steps.dockerfile_changes.outputs.changed == 'true'
+        run: git push
