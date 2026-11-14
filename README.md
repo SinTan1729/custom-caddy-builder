@@ -3,7 +3,7 @@
 This repo builds custom docker a custom image for caddy with the modules that I use. This is for my personal
 use, but feel free to use the image if it fits your needs.
 
-The container is [available on GHCR](https://ghcr.io/sintan1729/caddy-custom).
+The container is [available on GHCR](https://ghcr.io/sintan1729/caddy).
 
 A workflow checks updates for `caddy` and the plugins daily, and builds new docker images whenever necessary.
 

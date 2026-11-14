@@ -11,4 +11,4 @@ jobs:
     steps:
       - uses: dataaxiom/ghcr-cleanup-action@v1
         with:
-          package: caddy-custom
+          package: caddy
