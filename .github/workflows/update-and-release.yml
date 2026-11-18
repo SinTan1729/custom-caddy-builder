@@ -1,4 +1,4 @@
-name: Update Dockerfile and publish image
+name: Update and Release
 
 on:
   workflow_dispatch:
@@ -6,51 +6,94 @@ on:
     - cron: '53 3 * * *'
 
 jobs:
-  update-and-publish:
-    name: Update and Publish
+  prepare:
+    name: Update build and release Dockerfiles
     runs-on: ubuntu-latest
     outputs:
       dockerfile_changed: ${{ steps.dockerfile_changes.outputs.changed }}
-
     permissions:
       contents: write
-      packages: write
-      attestations: write
-      id-token: write
-
     steps:
-      # Run updates
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Set up Git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Run Dockerfile update script
         run: ./.github/updater.py
-      - name: Check whether Dockerfile changed
+
+      - name: Check whether either maintained Dockerfile changed
         id: dockerfile_changes
         shell: bash
         run: |
-          if git diff --quiet -- Dockerfile; then
+          if git diff --quiet -- Dockerfile.build Dockerfile.release; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Build and test docker image
-      - name: Build latest image for testing
+      - name: Save release inputs
         if: steps.dockerfile_changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-inputs
+          path: |
+            Dockerfile.build
+            Dockerfile.release
+            update-summary.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  build-binaries:
+    name: Build and test ${{ matrix.arch }}
+    needs: prepare
+    if: needs.prepare.outputs.dockerfile_changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Download release inputs
+        uses: actions/download-artifact@v8
+        with:
+          name: release-inputs
+          path: release-inputs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build architecture-specific binary
         uses: docker/build-push-action@v7
         with:
           context: .
-          load: true
-          tags: caddy:test
-      - name: Run a smoke test
-        if: steps.dockerfile_changes.outputs.changed == 'true'
+          file: release-inputs/Dockerfile.build
+          platforms: linux/${{ matrix.arch }}
+          build-args: |
+            GOOS=linux
+            GOARCH=${{ matrix.arch }}
+          outputs: type=local,dest=build-output
+
+      - name: Stage binary
         shell: bash
+        run: |
+          mkdir -p "dist/${{ matrix.arch }}"
+          install -m 0755 build-output/caddy "dist/${{ matrix.arch }}/caddy"
+
+      - name: Smoke test binary
+        shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           mkdir -p smoke
           cat > smoke/Caddyfile <<'EOF'
@@ -58,30 +101,89 @@ jobs:
             respond "ok" 200
           }
           EOF
+
           docker run -d --rm \
-            --name caddy-smoke \
-            -p 8080:80 \
+            --name "caddy-smoke-${ARCH}" \
+            -p 127.0.0.1:8080:80 \
+            -v "$PWD/dist/${ARCH}/caddy:/usr/bin/caddy:ro" \
             -v "$PWD/smoke/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            caddy:test
-          for i in {1..10}; do
-          if curl --fail --silent http://localhost:8080 | grep -Fxq "ok"; then
-            exit 0
-          fi
+            "$(sed -nE 's/^FROM (caddy:[^ ]+-alpine)$/\1/p' release-inputs/Dockerfile.release)"
+
+          cleanup() {
+            docker rm -f "caddy-smoke-${ARCH}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for i in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:8080 | grep -Fxq "ok"; then
+              exit 0
+            fi
             sleep 1
           done
-          docker logs caddy-smoke
-          curl --fail --silent http://localhost:8080 | grep -Fx "ok"
 
-      # Commit and push the docker image
+          docker logs "caddy-smoke-${ARCH}"
+          exit 1
+
+      - name: Upload tested binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: caddy-${{ matrix.arch }}
+          path: dist/${{ matrix.arch }}/caddy
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Assemble and publish
+    needs: [prepare, build-binaries]
+    if: needs.prepare.outputs.dockerfile_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download release inputs
+        uses: actions/download-artifact@v8
+        with:
+          name: release-inputs
+          path: release-inputs
+
+      - name: Restore updated Dockerfiles
+        run: |
+          cp release-inputs/Dockerfile.build Dockerfile.build
+          cp release-inputs/Dockerfile.release Dockerfile.release
+          cp release-inputs/update-summary.txt update-summary.txt
+
+      - name: Download amd64 binary
+        uses: actions/download-artifact@v8
+        with:
+          name: caddy-amd64
+          path: dist/amd64
+
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v8
+        with:
+          name: caddy-arm64
+          path: dist/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Log in to GHCR
-        if: steps.dockerfile_changes.outputs.changed == 'true'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract image metadata
-        if: steps.dockerfile_changes.outputs.changed == 'true'
         id: meta
         uses: docker/metadata-action@v6
         env:
@@ -90,24 +192,27 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/caddy
           tags: |
             type=raw,value=latest
-      - name: Push the image to GHCR
-        if: steps.dockerfile_changes.outputs.changed == 'true'
+
+      - name: Build and push multi-architecture image
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: Dockerfile.release
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+
       - name: Commit Dockerfile changes
-        if: steps.dockerfile_changes.outputs.changed == 'true'
         shell: bash
         run: |
-          BODY_FILE="update-summary.txt"
-          git add Dockerfile
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Dockerfile.build Dockerfile.release
           git commit \
             -m "Found updates" \
-            -m "$(cat "$BODY_FILE")"
+            -m "$(cat update-summary.txt)"
+
       - name: Push commit
-        if: steps.dockerfile_changes.outputs.changed == 'true'
         run: git push

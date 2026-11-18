@@ -1,0 +1,25 @@
+# Build on the runner's native architecture. GOOS/GOARCH select the output
+# binary architecture; the build tools themselves run natively.
+FROM --platform=$BUILDPLATFORM caddy:2.11.9-builder-alpine AS builder
+
+ARG GOOS=linux
+ARG GOARCH=amd64
+
+WORKDIR /app
+RUN git clone https://github.com/JasonLovesDoggo/caddy-defender --branch v0.10.2
+WORKDIR /app/caddy-defender
+RUN go run ranges/main.go --fetch-tor
+
+WORKDIR /usr/bin
+RUN mkdir -p /out && \
+    GOOS=${GOOS} GOARCH=${GOARCH} xcaddy build \
+      --output /out/caddy \
+      --with github.com/caddy-dns/cloudflare@v0.2.4 \
+      --with pkg.jsn.cam/caddy-defender@v0.10.2=/app/caddy-defender \
+      --with github.com/mholt/caddy-ratelimit@v0.1.0 \
+      --with github.com/caddy-dns/desec@v1.1.0 \
+      --with github.com/SinTan1729/caddy-wikijs-metatags@v0.4.4
+
+# Export only the compiled binary with Buildx's local exporter.
+FROM scratch AS artifact
+COPY --from=builder /out/caddy /caddy
