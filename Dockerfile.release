@@ -1,4 +1,4 @@
 # Buildx selects the matching binary for each target platform.
 FROM caddy:2.11.9-alpine
 ARG TARGETARCH
-COPY dist/${TARGETARCH}/caddy /usr/bin/caddy
+COPY --chmod=755 dist/${TARGETARCH}/caddy /usr/bin/caddy

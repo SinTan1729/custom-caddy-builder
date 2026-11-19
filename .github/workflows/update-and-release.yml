@@ -177,7 +177,6 @@ jobs:
         with:
           name: caddy-amd64
           path: dist/amd64
-
       - name: Download arm64 binary
         uses: actions/download-artifact@v8
         with:
