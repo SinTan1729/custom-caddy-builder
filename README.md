@@ -1,9 +1,15 @@
 # Caddy builder with modules
 
-This repo builds custom docker a custom image for caddy with the modules that I use. This is for my personal
+This repo builds a custom image for caddy with the modules that I use. This is for my personal
 use, but feel free to use the image if it fits your needs.
 
-The container is [available on GHCR](https://ghcr.io/sintan1729/caddy).
+The container is [available on GHCR](https://ghcr.io/sintan1729/caddy) for `linux/amd64` and `linux/arm64`. Just use the following container image.
+
+```bash
+ghcr.io/sintan1729/caddy:latest
+```
+
+It works with `podman`, `docker`, and any other OCI-compatibale container engine.
 
 A workflow checks updates for `caddy` and the plugins daily, and builds new docker images whenever necessary.
 
