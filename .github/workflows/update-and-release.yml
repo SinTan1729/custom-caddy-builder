@@ -7,7 +7,7 @@ on:
 
 jobs:
   prepare:
-    name: Update build and release Dockerfiles
+    name: Update Dockerfiles
     runs-on: ubuntu-latest
     outputs:
       dockerfile_changed: ${{ steps.dockerfile_changes.outputs.changed }}
